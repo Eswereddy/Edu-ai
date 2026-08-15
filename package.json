@@ -1,0 +1,31 @@
+{
+  "name": "eduai-backend",
+  "version": "1.0.0",
+  "description": "Backend API for EduAI Platform - serves /api/ai/instant used by every AI phase (student, faculty, parent, admin, AI-admin portals) plus the app's static frontend.",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test tests/**/*.test.js"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "docx": "^9.7.1",
+    "dotenv": "^16.4.5",
+    "ethers": "^6.13.4",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
+    "firebase-admin": "^12.7.0",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.0.0",
+    "nodemailer": "^6.9.15",
+    "pdfkit": "^0.19.1",
+    "uuid": "^14.0.1",
+    "ws": "^8.21.3"
+  }
+}
