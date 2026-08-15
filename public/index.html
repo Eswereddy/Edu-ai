@@ -2274,6 +2274,20 @@
             const remember = Boolean(options?.remember);
             activeAuthUser = buildAuthSessionPayload(portal, user, remember);
             storeAuthSession(activeAuthUser, remember);
+            // Sync real logged-in user into DATA so AI always uses correct name
+            if (user?.name) {
+                if (portal === 'student') {
+                    DATA.student.name = user.name;
+                    if (user.email) DATA.student.email = user.email;
+                    if (user.id)   DATA.student.id   = user.id;
+                } else if (portal === 'faculty') {
+                    const match = (DATA.faculty || []).find(f => f.id === user.id || f.email === user.email);
+                    if (match) match.name = user.name;
+                } else if (portal === 'parent') {
+                    const match = (DATA.parents || []).find(p => p.id === user.id || p.email === user.email);
+                    if (match) match.name = user.name;
+                }
+            }
             if (options?.password) {
                 // Fire-and-forget: links this login to the real backend account
                 // system (auth + memory + resume builder) without blocking the UI.
@@ -12923,7 +12937,7 @@ Include all standard sections with placeholder but realistic content. Make it co
             },
             azureApiVersion: '2024-10-21',
             temperature: 0.4,
-            maxTokens: 700,
+            maxTokens: 1800,
             requestTimeoutMs: 30000,
             retryCount: 1,
             raceMode: 'off',
@@ -13117,13 +13131,17 @@ Include all standard sections with placeholder but realistic content. Make it co
 
         function getPortalContextData(portal) {
             if (portal === 'student') {
-                return `Context: Student ${DATA?.student?.name || ''}, CGPA ${DATA?.student?.cgpa || ''}, Attendance ${DATA?.student?.attendance || ''}%.`;
+                const realName = activeAuthUser?.name || DATA?.student?.name || '';
+                const realId = activeAuthUser?.id || DATA?.student?.id || '';
+                return `Context: Student ${realName}${realId ? ' (ID: ' + realId + ')' : ''}, CGPA ${DATA?.student?.cgpa || ''}, Attendance ${DATA?.student?.attendance || ''}%. Always address the student by their real name: ${realName}.`;
             }
             if (portal === 'faculty') {
-                return `Context: Faculty dashboard with ${DATA?.students?.length || 0} tracked students and mentoring tools.`;
+                const realName = activeAuthUser?.name || '';
+                return `Context: Faculty member ${realName}. Dashboard with ${DATA?.students?.length || 0} tracked students and mentoring tools.`;
             }
             if (portal === 'parent') {
-                return `Context: Parent view for ${DATA?.student?.name || 'student'} with academics, attendance, and fee status.`;
+                const realName = activeAuthUser?.name || DATA?.student?.name || 'student';
+                return `Context: Parent view for ${realName} with academics, attendance, and fee status.`;
             }
             if (portal === 'admin') {
                 return `Context: Admin oversight of students=${DATA?.students?.length || 0}, faculty=${DATA?.faculty?.length || 0}, parents=${DATA?.parents?.length || 0}.`;
@@ -13229,7 +13247,8 @@ Include all standard sections with placeholder but realistic content. Make it co
                             messages: [{ role: 'user', content: prompt }],
                             temperature: cfg?.temperature,
                             maxTokens: cfg?.maxTokens,
-                            timeoutMs
+                            timeoutMs,
+                            userName: activeAuthUser?.name || DATA?.student?.name || ''
                         })
                     });
 

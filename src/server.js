@@ -173,9 +173,9 @@ const scheduler = require('./scheduler');
 
 const PORT = Number(process.env.PORT || 4111);
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
-const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5';
+const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6';
 const AI_API_TOKEN = process.env.AI_API_TOKEN || '';
-const MAX_TOKENS_CAP = Number(process.env.MAX_TOKENS_CAP || 1200);
+const MAX_TOKENS_CAP = Number(process.env.MAX_TOKENS_CAP || 2000);
 const RATE_LIMIT_PER_MINUTE = Number(process.env.RATE_LIMIT_PER_MINUTE || 60);
 const VALID_ROLES = new Set(['student', 'faculty', 'parent', 'admin', 'ai-admin']);
 
@@ -275,7 +275,11 @@ app.post('/api/ai/instant', aiLimiter, attachUserIfPresent, async (req, res) => 
           .map((m) => ({ role: m.role, content: String(m.content) }))
       : [{ role: 'user', content: query }];
 
+    const realUserName = req.user?.name || (body.userName ? String(body.userName).trim() : '');
     let system = getRolePrompt(role);
+    if (realUserName) {
+      system += `\n\nIMPORTANT: The user's real name is "${realUserName}". Always address them by this exact name — never use a placeholder or any other name.`;
+    }
     if (body.useRag !== false) {
       const topK = Math.max(1, Math.min(8, Number(body.ragTopK) || 4));
       const snippets = retrieve(role, query, topK);
@@ -291,7 +295,7 @@ app.post('/api/ai/instant', aiLimiter, attachUserIfPresent, async (req, res) => 
       system += memory.formatContextForPrompt(req.user.id, role);
     }
 
-    const maxTokens = Math.min(MAX_TOKENS_CAP, Number(body.maxTokens) || 700);
+    const maxTokens = Math.min(MAX_TOKENS_CAP, Number(body.maxTokens) || 1500);
 
     const text = await callAnthropic({
       apiKey: ANTHROPIC_API_KEY,
