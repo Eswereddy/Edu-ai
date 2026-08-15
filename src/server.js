@@ -180,6 +180,7 @@ const RATE_LIMIT_PER_MINUTE = Number(process.env.RATE_LIMIT_PER_MINUTE || 60);
 const VALID_ROLES = new Set(['student', 'faculty', 'parent', 'admin', 'ai-admin']);
 
 const app = express();
+app.set('trust proxy', 1); // Render sits behind a proxy — needed for express-rate-limit to read X-Forwarded-For correctly
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 
