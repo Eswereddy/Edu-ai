@@ -65,6 +65,53 @@ async function loginUser({ email, password }) {
   return { token, user: publicUser(user) };
 }
 
+// Real OAuth account resolution: link-by-provider-id first, fall back to
+// linking by verified email (so a user who registered with email/password
+// and later clicks "Continue with Google" using the same address gets
+// merged into the same account instead of a duplicate), otherwise create
+// a brand-new account. OAuth-only accounts get a random, never-typeable
+// bcrypt hash stored in password_hash so the existing NOT NULL column and
+// email/password login path are both untouched.
+async function findOrCreateOAuthUser({ provider, providerId, email, name, avatarUrl, role }) {
+  const cleanEmail = String(email || '').trim().toLowerCase();
+  const cleanRole = VALID_ROLES.has(role) ? role : 'student';
+
+  let user = db.prepare('SELECT * FROM users WHERE oauth_provider = ? AND oauth_id = ?').get(provider, providerId);
+  let isNewUser = false;
+
+  if (!user && cleanEmail) {
+    user = db.prepare('SELECT * FROM users WHERE email = ?').get(cleanEmail);
+    if (user) {
+      db.prepare('UPDATE users SET oauth_provider = ?, oauth_id = ?, avatar_url = COALESCE(?, avatar_url) WHERE id = ?').run(
+        provider,
+        providerId,
+        avatarUrl || null,
+        user.id
+      );
+      user = db.prepare('SELECT * FROM users WHERE id = ?').get(user.id);
+    }
+  }
+
+  if (!user) {
+    if (!cleanEmail) {
+      const err = new Error(`${provider} did not share a verified email address`);
+      err.status = 400;
+      throw err;
+    }
+    const id = uid();
+    const unusablePassword = crypto.randomBytes(24).toString('hex'); // never revealed, never used to log in
+    const passwordHash = await bcrypt.hash(unusablePassword, 10);
+    db.prepare(
+      `INSERT INTO users (id, name, email, password_hash, role, oauth_provider, oauth_id, avatar_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(id, String(name || cleanEmail.split('@')[0]).trim(), cleanEmail, passwordHash, cleanRole, provider, providerId, avatarUrl || null);
+    user = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+    isNewUser = true;
+  }
+
+  const token = issueToken(user);
+  return { token, user: publicUser(user), isNewUser };
+}
+
 function issueToken(user) {
   return jwt.sign({ sub: user.id, role: user.role, name: user.name, email: user.email }, JWT_SECRET, {
     expiresIn: JWT_EXPIRES_IN,
@@ -72,7 +119,15 @@ function issueToken(user) {
 }
 
 function publicUser(u) {
-  return { id: u.id, name: u.name, email: u.email, role: u.role, linkedStudentId: u.linked_student_id || null };
+  return {
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    role: u.role,
+    linkedStudentId: u.linked_student_id || null,
+    avatarUrl: u.avatar_url || null,
+    oauthProvider: u.oauth_provider || null,
+  };
 }
 
 // Attaches req.user if a valid Bearer JWT is present; does NOT reject
@@ -109,4 +164,4 @@ function requireRole(...roles) {
   };
 }
 
-module.exports = { registerUser, loginUser, attachUserIfPresent, requireAuth, requireRole, uid };
+module.exports = { registerUser, loginUser, findOrCreateOAuthUser, attachUserIfPresent, requireAuth, requireRole, uid };
