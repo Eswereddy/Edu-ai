@@ -130,4 +130,27 @@ CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_resumes_user ON resumes(user_id);
 `);
 
+// --- Additive migration: real OAuth sign-in (Google / LinkedIn / GitHub) ---
+// password_hash stays NOT NULL for OAuth-only accounts (a random unusable
+// hash is stored — see auth.js), so the original table definition above
+// never has to change. These columns are added defensively so upgrading
+// an existing eduai.db file (already deployed) works without a fresh DB.
+function addColumnIfMissing(table, column, ddl) {
+  try {
+    const cols = db.prepare(`PRAGMA table_info(${table})`).all();
+    if (!cols.some((c) => c.name === column)) {
+      db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+    }
+  } catch (e) {
+    // Non-fatal: worst case the OAuth-specific lookups fall back to email match.
+    console.warn(`[db] could not add column ${table}.${column}:`, e.message);
+  }
+}
+
+addColumnIfMissing('users', 'oauth_provider', 'oauth_provider TEXT');
+addColumnIfMissing('users', 'oauth_id', 'oauth_id TEXT');
+addColumnIfMissing('users', 'avatar_url', 'avatar_url TEXT');
+
+db.exec(`CREATE INDEX IF NOT EXISTS idx_users_oauth ON users(oauth_provider, oauth_id);`);
+
 module.exports = { db, DB_PATH };
