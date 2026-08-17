@@ -1118,6 +1118,119 @@
             margin-top: 0.2rem;
         }
 
+        /* Minimal login (additive, does not modify legacy auth-* rules above) */
+        .auth-min-shell {
+            max-width: 380px;
+            margin: 0 auto;
+            padding: 0.4rem 0.1rem 0.2rem;
+            animation: authFadeUp 260ms ease;
+        }
+
+        .auth-min-title {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: var(--text);
+            text-align: center;
+            margin-bottom: 0.25rem;
+        }
+
+        .auth-min-sub {
+            font-size: 0.78rem;
+            color: var(--text3);
+            text-align: center;
+            margin-bottom: 1.1rem;
+        }
+
+        .auth-min-pwd-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .auth-min-pwd-wrap .form-input {
+            flex: 1;
+            padding-right: 3.4rem;
+        }
+
+        .auth-min-pwd-toggle {
+            position: absolute;
+            right: 0.5rem;
+            background: none;
+            border: none;
+            color: var(--cyan);
+            font-size: 0.7rem;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 0.2rem 0.3rem;
+        }
+
+        .auth-min-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+            margin: -0.15rem 0 0.6rem;
+            font-size: 0.75rem;
+            color: var(--text2);
+        }
+
+        .auth-min-remember {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .auth-min-submit {
+            width: 100%;
+            justify-content: center;
+            padding: 0.65rem;
+            font-size: 0.9rem;
+            font-weight: 700;
+            border-radius: 10px;
+            margin-top: 0.2rem;
+        }
+
+        .auth-min-divider {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            margin: 1rem 0;
+            color: var(--text3);
+            font-size: 0.72rem;
+            letter-spacing: 0.5px;
+        }
+
+        .auth-min-divider::before,
+        .auth-min-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        .auth-min-social {
+            width: 100%;
+            justify-content: center;
+            margin-bottom: 0.5rem;
+            padding: 0.55rem;
+            font-size: 0.82rem;
+            border-radius: 10px;
+        }
+
+        .auth-min-demo {
+            text-align: center;
+            font-size: 0.68rem;
+            color: var(--text3);
+            margin-top: 0.7rem;
+        }
+
+        .auth-min-signup {
+            text-align: center;
+            font-size: 0.78rem;
+            color: var(--text2);
+            margin-top: 0.9rem;
+        }
+
         .otp-send-btn[disabled] {
             opacity: 0.65;
             cursor: not-allowed;
@@ -2274,20 +2387,6 @@
             const remember = Boolean(options?.remember);
             activeAuthUser = buildAuthSessionPayload(portal, user, remember);
             storeAuthSession(activeAuthUser, remember);
-            // Sync real logged-in user into DATA so AI always uses correct name
-            if (user?.name) {
-                if (portal === 'student') {
-                    DATA.student.name = user.name;
-                    if (user.email) DATA.student.email = user.email;
-                    if (user.id)   DATA.student.id   = user.id;
-                } else if (portal === 'faculty') {
-                    const match = (DATA.faculty || []).find(f => f.id === user.id || f.email === user.email);
-                    if (match) match.name = user.name;
-                } else if (portal === 'parent') {
-                    const match = (DATA.parents || []).find(p => p.id === user.id || p.email === user.email);
-                    if (match) match.name = user.name;
-                }
-            }
             if (options?.password) {
                 // Fire-and-forget: links this login to the real backend account
                 // system (auth + memory + resume builder) without blocking the UI.
@@ -2367,64 +2466,54 @@
             if (!content || !overlay) return;
 
             content.innerHTML = `
-      <div class="modal-title">Professional Login - ${escapeHtml(PORTALS[portal]?.label || portal)} <button class="modal-close" onclick="closeModal()">✕</button></div>
-            <div class="auth-login-shell">
-                <div class="auth-split-layout">
-                    <div class="auth-trust-panel">
-                        <div class="auth-trust-title">Institution Identity Gateway</div>
-                        <div class="auth-trust-sub">Role: ${escapeHtml(getPortalRoleLabel(portal))}. Secure, auditable sign-in with OTP recovery and activity protection.</div>
-                        <div class="auth-trust-kpis">
-                            <div class="auth-kpi"><div class="auth-kpi-label">Protected Portal</div><div class="auth-kpi-value">${escapeHtml(PORTALS[portal]?.label || portal)}</div></div>
-                            <div class="auth-kpi"><div class="auth-kpi-label">Recovery Flow</div><div class="auth-kpi-value">OTP Enabled</div></div>
-                            <div class="auth-kpi"><div class="auth-kpi-label">Session</div><div class="auth-kpi-value">Auto Timeout</div></div>
-                            <div class="auth-kpi"><div class="auth-kpi-label">Audit</div><div class="auth-kpi-value">Event Logged</div></div>
-                        </div>
-                        <ul class="auth-trust-list">
-                            <li>• Role-scoped access only</li>
-                            <li>• Failed-attempt lock protection</li>
-                            <li>• Password strength enforcement</li>
-                            <li>• Secure reset with OTP verification</li>
-                        </ul>
-                    </div>
+      <div class="modal-title">${escapeHtml(getPortalRoleLabel(portal))} Sign In <button class="modal-close" onclick="closeModal()">✕</button></div>
+      <div class="auth-min-shell">
+        <div class="auth-min-title">Welcome Back</div>
+        <div class="auth-min-sub">Sign in to the ${escapeHtml(PORTALS[portal]?.label || portal)} workspace</div>
 
-                    <div class="auth-form-panel">
-                        <div class="auth-login-hero"><strong>Secure Portal Access</strong><br/>Use your professional identity to enter the ${escapeHtml(getPortalRoleLabel(portal))} workspace.</div>
-                        <div class="auth-panel-title">Sign in to continue</div>
-                        <div class="alert alert-info" style="margin-bottom:0.8rem">Only authorized ID holders can access this portal.</div>
-                        <div class="form-group"><div class="form-label">Professional ID / Email</div><input id="portalLoginId" class="form-input" value="${escapeHtml(prefIdentity)}" placeholder="${escapeHtml(hintId)}" /></div>
-                        <div class="form-group"><div class="form-label">Password</div><input id="portalLoginPassword" class="form-input" type="password" placeholder="Enter password" onkeydown="handlePortalPasswordKeyEvent(event);if(event.key==='Enter')submitPortalLogin()" onkeyup="handlePortalPasswordKeyEvent(event)" /></div>
-                        <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;margin-top:-0.2rem;margin-bottom:0.35rem">
-                                <label style="font-size:0.75rem;color:var(--text2);display:flex;align-items:center;gap:0.4rem"><input id="portalRememberMe" type="checkbox" /> Keep me signed in</label>
-                                <button id="portalPasswordToggleBtn" class="btn btn-sm" type="button" onclick="togglePortalLoginPassword()">Show</button>
-                        </div>
-                        <div style="display:flex;justify-content:flex-end;margin-bottom:0.2rem"><button class="auth-mini-link" type="button" onclick="toggleForgotPasswordPanel()">Forgot password?</button></div>
-                        <div id="portalCapsWarn" style="font-size:0.72rem;color:var(--gold);min-height:16px"></div>
-                        <div id="portalLoginError" style="font-size:0.74rem;color:var(--red);min-height:18px"></div>
-                        <div id="forgotPasswordPanel" style="display:none;border:1px dashed var(--border);border-radius:10px;padding:0.65rem;margin-top:0.55rem">
-                            <div style="font-size:0.75rem;font-weight:600;color:var(--text);margin-bottom:0.35rem">Password Reset (OTP Demo)</div>
-                            <div class="form-group"><div class="form-label">ID or Email</div><input id="portalResetIdentity" class="form-input" placeholder="Use your professional ID or email" /></div>
-                            <div class="form-row">
-                                    <div class="form-group"><div class="form-label">OTP</div><input id="portalResetOtp" class="form-input" placeholder="6-digit OTP" /></div>
-                                    <div style="display:flex;align-items:flex-end"><button class="btn btn-sm" onclick="sendPortalResetOtp()">Send OTP</button></div>
-                            </div>
-                            <div class="form-group"><div class="form-label">New Password</div><input id="portalResetNewPassword" class="form-input" type="password" placeholder="Create new password" oninput="updateResetPasswordStrength()" /></div>
-                            <div class="pwd-strength-wrap">
-                                    <div class="pwd-strength-bar"><div id="portalResetStrengthFill" class="pwd-strength-fill"></div></div>
-                                    <div id="portalResetStrengthLabel" class="pwd-strength-label">Strength: Not set</div>
-                            </div>
-                            <div class="form-group"><div class="form-label">Confirm Password</div><input id="portalResetConfirmPassword" class="form-input" type="password" placeholder="Confirm new password" /></div>
-                            <div style="display:flex;justify-content:flex-end"><button class="btn btn-primary btn-sm" onclick="submitPortalPasswordReset()">Verify OTP & Reset</button></div>
-                        </div>
-                        <div class="alert alert-warn" style="margin-top:0.45rem">Demo access: ID like <strong>${escapeHtml(hintId)}</strong> and password <strong>${escapeHtml(hintPassword)}</strong>.</div>
-                        <div class="auth-actions"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn" onclick="submitGooglePortalLogin()">Google Login</button><button class="btn" onclick="submitLinkedInPortalLogin()">LinkedIn Login</button><button class="btn btn-primary" onclick="submitPortalLogin()">Login</button></div>
-                    </div>
-                </div>
+        <div class="form-group"><div class="form-label">Email, Register ID, or Phone Number</div><input id="portalLoginId" class="form-input" value="${escapeHtml(prefIdentity)}" placeholder="${escapeHtml(hintId)}" /></div>
+        <div class="form-group">
+            <div class="form-label">Password</div>
+            <div class="auth-min-pwd-wrap">
+                <input id="portalLoginPassword" class="form-input" type="password" placeholder="Enter password" onkeydown="handlePortalPasswordKeyEvent(event);if(event.key==='Enter')submitPortalLogin()" onkeyup="handlePortalPasswordKeyEvent(event)" />
+                <button id="portalPasswordToggleBtn" class="auth-min-pwd-toggle" type="button" onclick="togglePortalLoginPassword()">Show</button>
             </div>
-      <div id="authPostActionArea"></div>
-    ${(portal === 'admin' || portal === 'aiadmin') ? `<div class="alert alert-info" style="margin-top:0.7rem">Sign up is disabled for protected admin portals.</div>` : `
+        </div>
+        <div class="auth-min-row">
+            <label class="auth-min-remember"><input id="portalRememberMe" type="checkbox" /> Keep me signed in</label>
+            <button class="auth-mini-link" type="button" onclick="toggleForgotPasswordPanel()">Forgot password?</button>
+        </div>
+        <div id="portalCapsWarn" style="font-size:0.72rem;color:var(--gold);min-height:16px"></div>
+        <div id="portalLoginError" style="font-size:0.74rem;color:var(--red);min-height:18px"></div>
+        <div id="forgotPasswordPanel" style="display:none;border:1px dashed var(--border);border-radius:10px;padding:0.65rem;margin-top:0.55rem">
+            <div style="font-size:0.75rem;font-weight:600;color:var(--text);margin-bottom:0.35rem">Password Reset (OTP Demo)</div>
+            <div class="form-group"><div class="form-label">ID or Email</div><input id="portalResetIdentity" class="form-input" placeholder="Use your professional ID or email" /></div>
+            <div class="form-row">
+                    <div class="form-group"><div class="form-label">OTP</div><input id="portalResetOtp" class="form-input" placeholder="6-digit OTP" /></div>
+                    <div style="display:flex;align-items:flex-end"><button class="btn btn-sm" onclick="sendPortalResetOtp()">Send OTP</button></div>
+            </div>
+            <div class="form-group"><div class="form-label">New Password</div><input id="portalResetNewPassword" class="form-input" type="password" placeholder="Create new password" oninput="updateResetPasswordStrength()" /></div>
+            <div class="pwd-strength-wrap">
+                    <div class="pwd-strength-bar"><div id="portalResetStrengthFill" class="pwd-strength-fill"></div></div>
+                    <div id="portalResetStrengthLabel" class="pwd-strength-label">Strength: Not set</div>
+            </div>
+            <div class="form-group"><div class="form-label">Confirm Password</div><input id="portalResetConfirmPassword" class="form-input" type="password" placeholder="Confirm new password" /></div>
+            <div style="display:flex;justify-content:flex-end"><button class="btn btn-primary btn-sm" onclick="submitPortalPasswordReset()">Verify OTP & Reset</button></div>
+        </div>
+
+        <button class="btn btn-primary auth-min-submit" onclick="submitPortalLogin()">Log In</button>
+
+        <div class="auth-min-divider">OR</div>
+        <button id="oauthBtn-google" class="btn auth-min-social" onclick="startRealOAuthLogin('google')">Continue with Google</button>
+        <button id="oauthBtn-linkedin" class="btn auth-min-social" onclick="startRealOAuthLogin('linkedin')">Continue with LinkedIn</button>
+        <button id="oauthBtn-github" class="btn auth-min-social" onclick="startRealOAuthLogin('github')">Continue with GitHub</button>
+
+        <div class="auth-min-demo">Demo access — ID: <strong>${escapeHtml(hintId)}</strong> · Password: <strong>${escapeHtml(hintPassword)}</strong></div>
+        <div id="authPostActionArea"></div>
+        ${(portal === 'admin' || portal === 'aiadmin') ? `<div class="auth-min-signup">Sign up is disabled for protected admin portals.</div>` : `
         <div class="auth-signup-box">
             <details>
-                <summary class="auth-signup-toggle">New User Sign Up</summary>
+                <summary class="auth-signup-toggle" style="text-align:center">New user? <span style="color:var(--cyan)">Create an account</span></summary>
                 <div class="auth-signup-panel">
                     <div class="form-group"><div class="form-label">Full Name</div><input id="portalSignupName" class="form-input" placeholder="Enter full name" /></div>
                     <div class="form-group"><div class="form-label">Email</div><input id="portalSignupEmail" class="form-input" placeholder="name@gmail.com" /></div>
@@ -2438,12 +2527,14 @@
                 </div>
             </details>
         </div>
-    `}`;
+    `}
+      </div>`;
 
             overlay.classList.add('open');
             setTimeout(() => {
                 document.getElementById('portalLoginId')?.focus();
             }, 20);
+            refreshOAuthButtonAvailability();
         }
 
         function submitPortalLogin() {
@@ -2556,88 +2647,115 @@
             syncBackendAuthSession(portal, created, created.password || getDefaultPortalPassword(portal));
         }
 
-        function submitGooglePortalLogin() {
-            const portal = pendingPortalLogin;
-            if (!portal) return;
+        // ============================================================
+        // REAL OAUTH2 SIGN-IN (Google / LinkedIn / GitHub)
+        // Full Authorization Code flow against the real eduai-backend:
+        //   1. Browser is redirected to  GET /api/auth/oauth/:provider/start
+        //   2. Backend redirects to the provider's real consent screen
+        //   3. Provider redirects back to the backend's /callback with a code
+        //   4. Backend exchanges the code, verifies the profile, issues a JWT,
+        //      and redirects here to `/` with oauth_* query params
+        //   5. consumeOAuthCallbackParams() (called on every page load) picks
+        //      those up, stores the real session, and opens the portal.
+        // ============================================================
+        const OAUTH_PROVIDER_LABELS = { google: 'Google', linkedin: 'LinkedIn', github: 'GitHub' };
 
-            const emailInput = document.getElementById('portalSignupEmail')?.value?.trim() || '';
-            const idInput = document.getElementById('portalLoginId')?.value?.trim() || '';
-            const users = getPortalUsers(portal);
-
-            let user = null;
-            if (emailInput) {
-                if (!/@(gmail\.com|googlemail\.com)$/i.test(emailInput)) {
-                    setPortalLoginMessage('For demo Google Login, use a Gmail address.');
-                    return;
-                }
-                user = users.find(u => normalizeKey(u.email) === normalizeKey(emailInput));
-                if (!user && portal !== 'admin' && portal !== 'aiadmin') {
-                    const generatedName = toTitleCase(emailInput.split('@')[0]);
-                    user = addPortalUserAccount(portal, { name: generatedName, email: emailInput, password: getDefaultPortalPassword(portal) });
-                    saveDataToStorage(true);
-                }
-            }
-
-            if (!user && idInput) {
-                user = users.find(u => normalizeKey(u.id) === normalizeKey(idInput));
-            }
-
-            if (!user) {
-                setPortalLoginMessage('Enter Gmail in Sign Up Email (or existing Professional ID) for Google Login.');
-                return;
-            }
-
-            setLastLoginHint(portal, user.id || idInput || emailInput);
-            const expectedPass = String(user.password || '').trim() || getDefaultPortalPassword(portal);
-            if (isMandatoryPasswordChangeRequired(portal, user, expectedPass)) {
-                setPortalLoginMessage('Password update required before first access.', 'success');
-                renderMandatoryPasswordChangeForm(portal, user, getRememberSessionEnabled(), user.id || idInput || emailInput);
-                return;
-            }
-            setPortalLoginMessage('Google login successful.', 'success');
-            finalizePortalLogin(portal, user, { remember: getRememberSessionEnabled() });
+        function getOAuthStartUrl(provider, portal) {
+            return `${getBackendBaseUrl()}/api/auth/oauth/${provider}/start?portal=${encodeURIComponent(portal)}`;
         }
 
-        function submitLinkedInPortalLogin() {
+        function startRealOAuthLogin(provider) {
             const portal = pendingPortalLogin;
             if (!portal) return;
+            const btn = document.getElementById(`oauthBtn-${provider}`);
+            if (btn?.disabled) return;
+            setPortalLoginMessage(`Redirecting to ${OAUTH_PROVIDER_LABELS[provider] || provider}…`, 'success');
+            window.location.href = getOAuthStartUrl(provider, portal);
+        }
 
-            const emailInput = document.getElementById('portalSignupEmail')?.value?.trim() || '';
-            const idInput = document.getElementById('portalLoginId')?.value?.trim() || '';
+        // Greys out (with a tooltip) any provider button whose backend
+        // OAuth app isn't configured yet — same UX real production apps use.
+        async function refreshOAuthButtonAvailability() {
+            try {
+                const resp = await fetch(`${getBackendBaseUrl()}/api/auth/oauth/providers`);
+                if (!resp.ok) return;
+                const data = await resp.json();
+                Object.entries(data?.providers || {}).forEach(([provider, enabled]) => {
+                    const btn = document.getElementById(`oauthBtn-${provider}`);
+                    if (!btn) return;
+                    btn.disabled = !enabled;
+                    btn.title = enabled ? '' : `${OAUTH_PROVIDER_LABELS[provider] || provider} sign-in is not configured on this server yet`;
+                    btn.style.opacity = enabled ? '1' : '0.5';
+                    btn.style.cursor = enabled ? 'pointer' : 'not-allowed';
+                });
+            } catch (e) {
+                // Backend unreachable — leave buttons as-is; clicking will surface a clear error.
+            }
+        }
+
+        // Reads the oauth_* query params the backend redirected back with,
+        // stores the real JWT session, mirrors a local portal user record
+        // (so the existing dashboard rendering has a row to read), and
+        // opens the portal. Returns true if it consumed an OAuth redirect.
+        function consumeOAuthCallbackParams() {
+            const params = new URLSearchParams(window.location.search);
+            if (!params.has('oauth_portal')) return false;
+
+            const portal = params.get('oauth_portal') || 'student';
+            const cleanUrl = () => {
+                const url = new URL(window.location.href);
+                ['oauth_portal', 'oauth_token', 'oauth_name', 'oauth_email', 'oauth_id', 'oauth_avatar', 'oauth_error'].forEach(k => url.searchParams.delete(k));
+                window.history.replaceState({}, document.title, url.pathname + (url.search || '') + url.hash);
+            };
+
+            if (params.has('oauth_error')) {
+                const message = params.get('oauth_error') || 'OAuth sign-in failed';
+                cleanUrl();
+                openPortalLogin(portal);
+                setTimeout(() => setPortalLoginMessage(message), 30);
+                return true;
+            }
+
+            const token = params.get('oauth_token');
+            if (!token) { cleanUrl(); return false; }
+
+            const email = (params.get('oauth_email') || '').trim();
+            const name = params.get('oauth_name')?.trim() || (email ? toTitleCase(email.split('@')[0]) : 'New User');
+            const avatarUrl = params.get('oauth_avatar') || '';
+            cleanUrl();
+
+            // Real backend session — every AI call and data route after this
+            // is a genuinely authenticated request with this JWT.
+            setBackendAuthSession({ token, user: { name, email }, portal, syncedAt: Date.now() });
+            const cfg = getAIConfig();
+            cfg.backendBridge = cfg.backendBridge || JSON.parse(JSON.stringify(DEFAULT_AI_CONFIG.backendBridge));
+            cfg.backendBridge.apiToken = token;
+            cfg.backendBridge.enabled = true;
+            cfg.backendBridge.url = cfg.backendBridge.url || `${getBackendBaseUrl()}/api/ai/instant`;
+            setAIConfig(cfg);
+
+            // Mirror into this portal's local user list so the dashboard has
+            // a row to render (the frontend's demo-data layer is separate
+            // from the real backend DB the JWT above is actually good for).
             const users = getPortalUsers(portal);
-
-            let user = null;
-            if (emailInput) {
-                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/i.test(emailInput)) {
-                    setPortalLoginMessage('Enter a valid professional email for LinkedIn Login.');
-                    return;
-                }
-                user = users.find(u => normalizeKey(u.email) === normalizeKey(emailInput));
-                if (!user && portal !== 'admin' && portal !== 'aiadmin') {
-                    const generatedName = toTitleCase(emailInput.split('@')[0]);
-                    user = addPortalUserAccount(portal, { name: generatedName, email: emailInput, password: getDefaultPortalPassword(portal) });
-                    saveDataToStorage(true);
-                }
+            let user = email ? users.find(u => normalizeKey(u.email) === normalizeKey(email)) : null;
+            if (!user && portal !== 'admin' && portal !== 'aiadmin') {
+                user = addPortalUserAccount(portal, { name, email, password: getDefaultPortalPassword(portal) });
+                saveDataToStorage(true);
             }
-
-            if (!user && idInput) {
-                user = users.find(u => normalizeKey(u.id) === normalizeKey(idInput));
-            }
-
             if (!user) {
-                setPortalLoginMessage('Enter email in Sign Up Email (or existing Professional ID) for LinkedIn Login.');
-                return;
+                openPortalLogin(portal);
+                setTimeout(() => setPortalLoginMessage('Signed in, but this admin portal has no self-service account creation.'), 30);
+                return true;
             }
+            if (avatarUrl) user.avatarUrl = avatarUrl;
 
-            setLastLoginHint(portal, user.id || idInput || emailInput);
-            const expectedPass = String(user.password || '').trim() || getDefaultPortalPassword(portal);
-            if (isMandatoryPasswordChangeRequired(portal, user, expectedPass)) {
-                setPortalLoginMessage('Password update required before first access.', 'success');
-                renderMandatoryPasswordChangeForm(portal, user, getRememberSessionEnabled(), user.id || idInput || emailInput);
-                return;
-            }
-            setPortalLoginMessage('LinkedIn login successful.', 'success');
-            finalizePortalLogin(portal, user, { remember: getRememberSessionEnabled() });
+            setLastLoginHint(portal, user.id || email);
+            activeAuthUser = buildAuthSessionPayload(portal, user, true);
+            storeAuthSession(activeAuthUser, true);
+            closeModal();
+            openPortal(portal);
+            return true;
         }
 
         function toggleForgotPasswordPanel() {
@@ -12930,14 +13048,14 @@ Include all standard sections with placeholder but realistic content. Make it co
                 azureopenai: 'gpt-4o-mini'
             },
             endpoints: {
-                ollama: '',
+                ollama: 'http://localhost:11434',
                 antigravity: '',
                 huggingface: 'https://router.huggingface.co/v1/chat/completions',
                 azureopenai: ''
             },
             azureApiVersion: '2024-10-21',
             temperature: 0.4,
-            maxTokens: 1800,
+            maxTokens: 700,
             requestTimeoutMs: 30000,
             retryCount: 1,
             raceMode: 'off',
@@ -13131,17 +13249,13 @@ Include all standard sections with placeholder but realistic content. Make it co
 
         function getPortalContextData(portal) {
             if (portal === 'student') {
-                const realName = activeAuthUser?.name || DATA?.student?.name || '';
-                const realId = activeAuthUser?.id || DATA?.student?.id || '';
-                return `Context: Student ${realName}${realId ? ' (ID: ' + realId + ')' : ''}, CGPA ${DATA?.student?.cgpa || ''}, Attendance ${DATA?.student?.attendance || ''}%. Always address the student by their real name: ${realName}.`;
+                return `Context: Student ${DATA?.student?.name || ''}, CGPA ${DATA?.student?.cgpa || ''}, Attendance ${DATA?.student?.attendance || ''}%.`;
             }
             if (portal === 'faculty') {
-                const realName = activeAuthUser?.name || '';
-                return `Context: Faculty member ${realName}. Dashboard with ${DATA?.students?.length || 0} tracked students and mentoring tools.`;
+                return `Context: Faculty dashboard with ${DATA?.students?.length || 0} tracked students and mentoring tools.`;
             }
             if (portal === 'parent') {
-                const realName = activeAuthUser?.name || DATA?.student?.name || 'student';
-                return `Context: Parent view for ${realName} with academics, attendance, and fee status.`;
+                return `Context: Parent view for ${DATA?.student?.name || 'student'} with academics, attendance, and fee status.`;
             }
             if (portal === 'admin') {
                 return `Context: Admin oversight of students=${DATA?.students?.length || 0}, faculty=${DATA?.faculty?.length || 0}, parents=${DATA?.parents?.length || 0}.`;
@@ -13247,8 +13361,7 @@ Include all standard sections with placeholder but realistic content. Make it co
                             messages: [{ role: 'user', content: prompt }],
                             temperature: cfg?.temperature,
                             maxTokens: cfg?.maxTokens,
-                            timeoutMs,
-                            userName: activeAuthUser?.name || DATA?.student?.name || ''
+                            timeoutMs
                         })
                     });
 
@@ -15616,7 +15729,9 @@ Include all standard sections with placeholder but realistic content. Make it co
         loadDataFromStorage();
         applyStoredAppearancePrefs();
         initGlobalTheme(); // overrides with the saved cross-portal choice (localStorage) if present, and works for every role, not just students
-        setTimeout(hydrateAuthSession, 0);
+        setTimeout(() => {
+            if (!consumeOAuthCallbackParams()) hydrateAuthSession();
+        }, 0);
 
         // ============================================================
         // CHARTS
