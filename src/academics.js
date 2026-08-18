@@ -93,6 +93,31 @@ function listSemesters({ classSection } = {}) {
   return db.prepare('SELECT * FROM semesters ORDER BY created_at DESC').all();
 }
 
+function updateSemester(id, { name, classSection, startDate, endDate, isActive }) {
+  const existing = getSemester(id);
+  if (!existing) throw Object.assign(new Error('Semester not found'), { status: 404 });
+  db.prepare(
+    `UPDATE semesters SET
+       name = ?, class_section = ?, start_date = ?, end_date = ?, is_active = ?
+     WHERE id = ?`
+  ).run(
+    name != null ? name : existing.name,
+    classSection != null ? classSection : existing.class_section,
+    startDate !== undefined ? startDate : existing.start_date,
+    endDate !== undefined ? endDate : existing.end_date,
+    isActive != null ? (isActive ? 1 : 0) : existing.is_active,
+    id
+  );
+  return getSemester(id);
+}
+
+function deleteSemester(id) {
+  if (!getSemester(id)) throw Object.assign(new Error('Semester not found'), { status: 404 });
+  // Cascades to semester_subjects and results via ON DELETE CASCADE.
+  db.prepare('DELETE FROM semesters WHERE id = ?').run(id);
+  return { deleted: true };
+}
+
 // ------------------------------------------------------------- Subjects
 function addSubject(semesterId, { subjectName, subjectCode, credits, facultyId }) {
   if (!getSemester(semesterId)) throw Object.assign(new Error('Semester not found'), { status: 404 });
@@ -110,6 +135,30 @@ function listSubjects(semesterId) {
 
 function getSubject(id) {
   return db.prepare('SELECT * FROM semester_subjects WHERE id = ?').get(id) || null;
+}
+
+function updateSubject(id, { subjectName, subjectCode, credits, facultyId }) {
+  const existing = getSubject(id);
+  if (!existing) throw Object.assign(new Error('Subject not found'), { status: 404 });
+  db.prepare(
+    `UPDATE semester_subjects SET
+       subject_name = ?, subject_code = ?, credits = ?, faculty_id = ?
+     WHERE id = ?`
+  ).run(
+    subjectName != null ? subjectName : existing.subject_name,
+    subjectCode !== undefined ? subjectCode : existing.subject_code,
+    credits != null ? Number(credits) : existing.credits,
+    facultyId !== undefined ? facultyId : existing.faculty_id,
+    id
+  );
+  return getSubject(id);
+}
+
+function deleteSubject(id) {
+  if (!getSubject(id)) throw Object.assign(new Error('Subject not found'), { status: 404 });
+  // Cascades to results via ON DELETE CASCADE.
+  db.prepare('DELETE FROM semester_subjects WHERE id = ?').run(id);
+  return { deleted: true };
 }
 
 // -------------------------------------------------------------- Results
@@ -156,6 +205,13 @@ function listResultsForStudentInSemester(studentId, semesterId) {
        ORDER BY s.created_at ASC`
     )
     .all(studentId, semesterId);
+}
+
+function deleteResult(id) {
+  const row = db.prepare('SELECT id FROM results WHERE id = ?').get(id);
+  if (!row) throw Object.assign(new Error('Result not found'), { status: 404 });
+  db.prepare('DELETE FROM results WHERE id = ?').run(id);
+  return { deleted: true };
 }
 
 function listResultsForSemester(semesterId) {
@@ -222,11 +278,16 @@ module.exports = {
   createSemester,
   getSemester,
   listSemesters,
+  updateSemester,
+  deleteSemester,
   addSubject,
   listSubjects,
   getSubject,
+  updateSubject,
+  deleteSubject,
   upsertResult,
   getResultById,
+  deleteResult,
   listResultsForStudentInSemester,
   listResultsForSemester,
   sgpaFor,
