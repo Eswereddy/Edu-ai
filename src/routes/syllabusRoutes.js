@@ -21,6 +21,16 @@ router.post('/documents', requireRole('faculty', 'admin', 'ai-admin'), (req, res
   }
 });
 
+router.put('/documents/:id', requireRole('faculty', 'admin', 'ai-admin'), (req, res) => {
+  try {
+    const doc = syllabus.updateSyllabusDoc(req.params.id, req.body || {});
+    audit.record(req.user.id, 'update', 'syllabus_document', doc.id);
+    res.json({ ok: true, document: doc });
+  } catch (e) {
+    res.status(e.status || 500).json({ ok: false, error: e.message || 'Failed to update' });
+  }
+});
+
 router.delete('/documents/:id', requireRole('faculty', 'admin', 'ai-admin'), (req, res) => {
   try {
     syllabus.deleteSyllabusDoc(req.params.id);
