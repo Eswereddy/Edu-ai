@@ -47,20 +47,33 @@ async function registerUser({ name, email, password, role, linkedStudentId }) {
   return publicUser({ id, name, email: cleanEmail, role: cleanRole, linked_student_id: linkedStudentId || null });
 }
 
+function logLoginAttempt({ userId, emailAttempted, method, success }) {
+  try {
+    db.prepare(
+      'INSERT INTO login_audit (id, user_id, email_attempted, method, success) VALUES (?, ?, ?, ?, ?)'
+    ).run(uid(), userId || null, emailAttempted || null, method, success ? 1 : 0);
+  } catch (e) {
+    console.warn('[auth] could not write login_audit row:', e.message);
+  }
+}
+
 async function loginUser({ email, password }) {
   const cleanEmail = String(email || '').trim().toLowerCase();
   const user = db.prepare('SELECT * FROM users WHERE email = ?').get(cleanEmail);
   if (!user) {
+    logLoginAttempt({ userId: null, emailAttempted: cleanEmail, method: 'password', success: false });
     const err = new Error('Invalid email or password');
     err.status = 401;
     throw err;
   }
   const ok = await bcrypt.compare(String(password || ''), user.password_hash);
   if (!ok) {
+    logLoginAttempt({ userId: user.id, emailAttempted: cleanEmail, method: 'password', success: false });
     const err = new Error('Invalid email or password');
     err.status = 401;
     throw err;
   }
+  logLoginAttempt({ userId: user.id, emailAttempted: cleanEmail, method: 'password', success: true });
   const token = issueToken(user);
   return { token, user: publicUser(user) };
 }
@@ -109,6 +122,7 @@ async function findOrCreateOAuthUser({ provider, providerId, email, name, avatar
   }
 
   const token = issueToken(user);
+  logLoginAttempt({ userId: user.id, emailAttempted: cleanEmail, method: provider, success: true });
   return { token, user: publicUser(user), isNewUser };
 }
 
