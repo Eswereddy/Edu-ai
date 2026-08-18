@@ -36,6 +36,26 @@ router.get('/semesters/:id', requireAuth, (req, res) => {
   res.json({ ok: true, semester });
 });
 
+router.put('/semesters/:id', requireAuth, requireRole('faculty', 'admin'), (req, res) => {
+  try {
+    const semester = academics.updateSemester(req.params.id, req.body || {});
+    audit.record(req.user.id, 'update', 'semester', semester.id, { name: semester.name });
+    res.json({ ok: true, semester });
+  } catch (e) {
+    res.status(e.status || 500).json({ ok: false, error: e.message });
+  }
+});
+
+router.delete('/semesters/:id', requireAuth, requireRole('faculty', 'admin'), (req, res) => {
+  try {
+    academics.deleteSemester(req.params.id);
+    audit.record(req.user.id, 'delete', 'semester', req.params.id);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(e.status || 500).json({ ok: false, error: e.message });
+  }
+});
+
 // -------------------------------------------------------------- Subjects
 router.post('/semesters/:id/subjects', requireAuth, requireRole('faculty', 'admin'), (req, res) => {
   try {
@@ -49,6 +69,32 @@ router.post('/semesters/:id/subjects', requireAuth, requireRole('faculty', 'admi
 
 router.get('/semesters/:id/subjects', requireAuth, (req, res) => {
   res.json({ ok: true, subjects: academics.listSubjects(req.params.id) });
+});
+
+router.get('/subjects/:id', requireAuth, (req, res) => {
+  const subject = academics.getSubject(req.params.id);
+  if (!subject) return res.status(404).json({ ok: false, error: 'Subject not found' });
+  res.json({ ok: true, subject });
+});
+
+router.put('/subjects/:id', requireAuth, requireRole('faculty', 'admin'), (req, res) => {
+  try {
+    const subject = academics.updateSubject(req.params.id, req.body || {});
+    audit.record(req.user.id, 'update', 'semester_subject', subject.id, { subjectName: subject.subject_name });
+    res.json({ ok: true, subject });
+  } catch (e) {
+    res.status(e.status || 500).json({ ok: false, error: e.message });
+  }
+});
+
+router.delete('/subjects/:id', requireAuth, requireRole('faculty', 'admin'), (req, res) => {
+  try {
+    academics.deleteSubject(req.params.id);
+    audit.record(req.user.id, 'delete', 'semester_subject', req.params.id);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(e.status || 500).json({ ok: false, error: e.message });
+  }
 });
 
 // -------------------------------------------------------------- Results
@@ -75,6 +121,16 @@ router.post('/results', requireAuth, requireRole('faculty', 'admin'), (req, res)
       meta: { resultId: result.id, semesterId, subjectId, gradeLetter: result.grade_letter },
     });
     res.status(201).json({ ok: true, result });
+  } catch (e) {
+    res.status(e.status || 500).json({ ok: false, error: e.message });
+  }
+});
+
+router.delete('/results/:id', requireAuth, requireRole('faculty', 'admin'), (req, res) => {
+  try {
+    academics.deleteResult(req.params.id);
+    audit.record(req.user.id, 'delete', 'result', req.params.id);
+    res.json({ ok: true });
   } catch (e) {
     res.status(e.status || 500).json({ ok: false, error: e.message });
   }
