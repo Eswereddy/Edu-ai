@@ -11,7 +11,9 @@ const { retrieve } = require('./rag'); // upgraded TF-IDF retrieval (drop-in, sa
 const { attachUserIfPresent } = require('./auth');
 const memory = require('./memory');
 const authRoutes = require('./routes/authRoutes');
+const oauthRoutes = require('./routes/oauthRoutes'); // additive: real Google/LinkedIn/GitHub OAuth2 sign-in
 const dataRoutes = require('./routes/dataRoutes');
+const portalRoutes = require('./routes/portalRoutes'); // additive: profiles, timetable, library, hostel, transport, placements, exams, payroll
 const createResumeRouter = require('./routes/resumeRoutes');
 
 // New in this pass: timetable, assignments, quizzes, library, events,
@@ -170,18 +172,16 @@ const lmsIntegrationRoutes = require('./routes/lmsIntegrationRoutes'); // additi
 
 const ws = require('./ws');
 const scheduler = require('./scheduler');
-const oauthRoutes = require('./routes/oauthRoutes'); // additive: real Google/LinkedIn/GitHub OAuth2 sign-in
 
 const PORT = Number(process.env.PORT || 4111);
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
-const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6';
+const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5';
 const AI_API_TOKEN = process.env.AI_API_TOKEN || '';
-const MAX_TOKENS_CAP = Number(process.env.MAX_TOKENS_CAP || 2000);
+const MAX_TOKENS_CAP = Number(process.env.MAX_TOKENS_CAP || 1200);
 const RATE_LIMIT_PER_MINUTE = Number(process.env.RATE_LIMIT_PER_MINUTE || 60);
 const VALID_ROLES = new Set(['student', 'faculty', 'parent', 'admin', 'ai-admin']);
 
 const app = express();
-app.set('trust proxy', 1); // Render sits behind a proxy — needed for express-rate-limit to read X-Forwarded-For correctly
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 
@@ -276,11 +276,7 @@ app.post('/api/ai/instant', aiLimiter, attachUserIfPresent, async (req, res) => 
           .map((m) => ({ role: m.role, content: String(m.content) }))
       : [{ role: 'user', content: query }];
 
-    const realUserName = req.user?.name || (body.userName ? String(body.userName).trim() : '');
     let system = getRolePrompt(role);
-    if (realUserName) {
-      system += `\n\nIMPORTANT: The user's real name is "${realUserName}". Always address them by this exact name — never use a placeholder or any other name.`;
-    }
     if (body.useRag !== false) {
       const topK = Math.max(1, Math.min(8, Number(body.ragTopK) || 4));
       const snippets = retrieve(role, query, topK);
@@ -296,7 +292,7 @@ app.post('/api/ai/instant', aiLimiter, attachUserIfPresent, async (req, res) => 
       system += memory.formatContextForPrompt(req.user.id, role);
     }
 
-    const maxTokens = Math.min(MAX_TOKENS_CAP, Number(body.maxTokens) || 1500);
+    const maxTokens = Math.min(MAX_TOKENS_CAP, Number(body.maxTokens) || 700);
 
     const text = await callAnthropic({
       apiKey: ANTHROPIC_API_KEY,
@@ -331,6 +327,7 @@ app.post('/api/ai/instant', aiLimiter, attachUserIfPresent, async (req, res) => 
 app.use('/api/auth', authRoutes);
 app.use('/api/auth/oauth', oauthRoutes); // additive: GET /start (redirect to provider) + /callback + /providers
 app.use('/api', dataRoutes);
+app.use('/api', portalRoutes);
 app.use('/api/resume', createResumeRouter({ apiKey: ANTHROPIC_API_KEY, model: ANTHROPIC_MODEL }));
 
 // ---------------------------------------------------------------------------
