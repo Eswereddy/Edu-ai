@@ -66,6 +66,25 @@ function deleteSyllabusDoc(id) {
   return { deleted: true };
 }
 
+function updateSyllabusDoc(id, { semesterId, subjectName, title, classSection, uploadId, externalUrl }) {
+  const existing = db.prepare('SELECT * FROM syllabus_documents WHERE id = ?').get(id);
+  if (!existing) throw Object.assign(new Error('Not found'), { status: 404 });
+  db.prepare(
+    `UPDATE syllabus_documents SET
+       semester_id = ?, subject_name = ?, title = ?, class_section = ?, upload_id = ?, external_url = ?
+     WHERE id = ?`
+  ).run(
+    semesterId !== undefined ? semesterId : existing.semester_id,
+    subjectName != null ? subjectName : existing.subject_name,
+    title != null ? title : existing.title,
+    classSection !== undefined ? classSection : existing.class_section,
+    uploadId !== undefined ? uploadId : existing.upload_id,
+    externalUrl !== undefined ? externalUrl : existing.external_url,
+    id
+  );
+  return db.prepare('SELECT * FROM syllabus_documents WHERE id = ?').get(id);
+}
+
 // --------------------------------------------------------- Exam schedule
 function addExamScheduleEntry({ classSection, subjectName, examDate, startTime, room, createdBy }) {
   if (!classSection || !subjectName || !examDate) {
@@ -104,6 +123,6 @@ function examScheduleIcs(classSection) {
 }
 
 module.exports = {
-  addSyllabusDoc, listSyllabusDocs, deleteSyllabusDoc,
+  addSyllabusDoc, listSyllabusDocs, updateSyllabusDoc, deleteSyllabusDoc,
   addExamScheduleEntry, listExamSchedule, deleteExamScheduleEntry, examScheduleIcs,
 };
