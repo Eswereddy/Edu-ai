@@ -4701,7 +4701,10 @@ Keep it warm, confident and suitable for a LinkedIn-style profile. Return only t
     </div>
   </div>
   <div class="card">
-    <div class="card-title">Mid-Term Exam Schedule</div>
+        <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem">
+            <span>Mid-Term Exam Schedule</span>
+            <button class="btn btn-sm btn-primary" onclick="downloadHallTicketPDF()">🎫 Download Full Hall Ticket</button>
+        </div>
     <div class="table-wrap"><table>
       <tr><th>Date</th><th>Time</th><th>Subject</th><th>Code</th><th>Venue</th><th>Duration</th><th>Marks</th><th></th></tr>
       ${DATA.midExams.sem5.map(exam => `
@@ -4713,7 +4716,7 @@ Keep it warm, confident and suitable for a LinkedIn-style profile. Return only t
         <td>${exam.venue}</td>
         <td>${exam.duration}</td>
                 <td><span class="badge badge-gold">${exam.totalMarks ?? exam.marks ?? 50}</span></td>
-                <td><button class="btn btn-sm" onclick="downloadHolidayICS('${exam.subject.replace(/'/g, "\\'")} Exam','${exam.date}')">+ Calendar</button></td>
+                <td><button class="btn btn-sm" onclick="downloadHallTicketPDF('${exam.code.replace(/'/g, "\\'")}')">🎫 Hall Ticket</button></td>
       </tr>`).join('')}
     </table></div>
   </div>
@@ -4754,6 +4757,147 @@ Keep it warm, confident and suitable for a LinkedIn-style profile. Return only t
       </div>
     </details>`).join('')}
   </div>`;
+        }
+
+        // ============================================================
+        // MID-TERM HALL TICKET / ADMIT CARD (client-side PDF, profile-based)
+        // ============================================================
+        function downloadHallTicketPDF(examCode) {
+            const { jsPDF } = window.jspdf || {};
+            if (!jsPDF) { alert('PDF engine failed to load — check your connection and try again.'); return; }
+            const s = DATA.student || {};
+            const allExams = [...(DATA.midExams?.sem5 || [])].sort((a, b) => new Date(a.date) - new Date(b.date));
+            const exams = examCode ? allExams.filter(e => e.code === examCode) : allExams;
+            if (!exams.length) { alert('No exam found to generate a hall ticket for.'); return; }
+
+            const doc = new jsPDF();
+            const pageW = doc.internal.pageSize.getWidth();
+            const semVal = s.semester ?? s.sem ?? 5;
+            const ticketNo = ('HT-' + (s.id || 'STU') + '-' + new Date().getFullYear()).toUpperCase();
+
+            // Outer border
+            doc.setDrawColor(6, 182, 212);
+            doc.setLineWidth(0.8);
+            doc.rect(10, 10, pageW - 20, 267);
+
+            // Header
+            doc.setFontSize(16);
+            doc.setTextColor(6, 182, 212);
+            doc.text('🎓 EduAI College', pageW / 2, 22, { align: 'center' });
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.text('MID-TERM EXAMINATION HALL TICKET', pageW / 2, 30, { align: 'center' });
+            doc.setFontSize(8);
+            doc.setTextColor(100);
+            doc.text(`Semester ${semVal} | Ticket No: ${ticketNo}`, pageW / 2, 36, { align: 'center' });
+            doc.setDrawColor(200);
+            doc.line(14, 41, pageW - 14, 41);
+
+            // Student photo (top-right) from profile, if available
+            if (s.profilePic) {
+                try { doc.addImage(s.profilePic, 'JPEG', pageW - 46, 46, 28, 28); } catch (e) { /* skip if unsupported format */ }
+                doc.setDrawColor(180);
+                doc.rect(pageW - 46, 46, 28, 28);
+            } else {
+                doc.setDrawColor(180);
+                doc.rect(pageW - 46, 46, 28, 28);
+                doc.setFontSize(7);
+                doc.setTextColor(150);
+                doc.text('Photo', pageW - 32, 61, { align: 'center' });
+            }
+
+            // Student details (from profile)
+            let y = 52;
+            doc.setFontSize(10);
+            doc.setTextColor(0, 0, 0);
+            const detailRows = [
+                ['Student Name', s.name || '-'],
+                ['Roll No / ID', s.id || '-'],
+                ['Enrollment No', s.enrollmentNo || '-'],
+                ['Department', s.dept || '-'],
+                ['Year / Semester', `Year ${s.year ?? '-'} / Sem ${semVal}`],
+                ['Section', s.section || '-'],
+            ];
+            detailRows.forEach(([label, val]) => {
+                doc.setTextColor(100);
+                doc.text(`${label}:`, 16, y);
+                doc.setTextColor(0, 0, 0);
+                doc.text(String(val), 60, y);
+                y += 7;
+            });
+
+            y += 4;
+            doc.setDrawColor(200);
+            doc.line(14, y, pageW - 14, y);
+            y += 8;
+
+            doc.setFontSize(11);
+            doc.setTextColor(6, 182, 212);
+            doc.text(exams.length > 1 ? 'Examination Schedule' : 'Examination Details', 16, y);
+            y += 7;
+
+            doc.setFontSize(8.5);
+            doc.setTextColor(255, 255, 255);
+            doc.setFillColor(6, 182, 212);
+            doc.rect(14, y - 4.5, pageW - 28, 6.5, 'F');
+            doc.text('Date', 16, y);
+            doc.text('Time', 48, y);
+            doc.text('Subject', 74, y);
+            doc.text('Code', 128, y);
+            doc.text('Venue', 148, y);
+            doc.text('Duration', 182, y);
+            y += 7;
+            doc.setTextColor(0, 0, 0);
+            exams.forEach((exam, idx) => {
+                if (idx % 2 === 1) { doc.setFillColor(245, 248, 250); doc.rect(14, y - 4.5, pageW - 28, 6.5, 'F'); }
+                doc.text(new Date(exam.date).toLocaleDateString(), 16, y);
+                doc.text(exam.time, 48, y);
+                doc.text(String(exam.subject).slice(0, 26), 74, y);
+                doc.text(exam.code, 128, y);
+                doc.text(String(exam.venue).slice(0, 18), 148, y);
+                doc.text(exam.duration, 182, y);
+                y += 7;
+            });
+
+            y += 6;
+            doc.setDrawColor(200);
+            doc.line(14, y, pageW - 14, y);
+            y += 8;
+
+            doc.setFontSize(10);
+            doc.setTextColor(6, 182, 212);
+            doc.text('Instructions for Candidates', 16, y);
+            y += 6;
+            doc.setFontSize(8.5);
+            doc.setTextColor(60);
+            const instructions = [
+                'Carry this hall ticket and a valid college ID card to every examination.',
+                'Arrive at the venue at least 15 minutes before the scheduled time.',
+                'Electronic devices, including mobile phones, are strictly prohibited in the hall.',
+                'Use only black or blue ballpoint pens to write answers.',
+                'Any form of malpractice will lead to disqualification from the examination.'
+            ];
+            instructions.forEach(line => { doc.text(`• ${line}`, 16, y); y += 5.5; });
+
+            // Signatures
+            y += 12;
+            doc.setDrawColor(150);
+            doc.line(20, y, 75, y);
+            doc.line(pageW - 75, y, pageW - 20, y);
+            doc.setFontSize(8);
+            doc.setTextColor(0, 0, 0);
+            doc.text('Student Signature', 47.5, y + 5, { align: 'center' });
+            doc.text('Controller of Examinations', pageW - 47.5, y + 5, { align: 'center' });
+
+            // Verification footer
+            const sigHash = btoa(`${s.id || 'STU'}-${ticketNo}-${new Date().toISOString().slice(0, 10)}`).slice(0, 24);
+            doc.setFontSize(7);
+            doc.setTextColor(140);
+            doc.text(`Verification Code: ${sigHash}`, 16, 268);
+            doc.text(`Generated on ${new Date().toLocaleString()} — EduAI College, valid only with original ID proof.`, 16, 272);
+
+            const fileLabel = examCode ? exams[0].code : 'Full-Schedule';
+            doc.save(`HallTicket-${s.id || 'Student'}-${fileLabel}.pdf`);
         }
 
         // ============================================================
@@ -5294,8 +5438,8 @@ Format as 5-6 numbered monthly milestones with specific, actionable tasks. Keep 
   <div class="page-sub">Academic year holidays & breaks</div>
   <div class="card">
     <div class="table-wrap"><table>
-      <tr><th>Holiday</th><th>Date</th><th>Type</th><th></th></tr>
-      ${holidays.map(h => `<tr><td><strong>${h.name}</strong></td><td>${new Date(h.date).toLocaleDateString()}</td><td><span class="badge ${h.type === 'National' ? 'badge-cyan' : h.type === 'Academic' ? 'badge-blue' : 'badge-gold'}">${h.type}</span></td><td><button class="btn btn-sm" onclick="downloadHolidayICS('${h.name.replace(/'/g, "\\'")}','${h.date}')">+ Add to Calendar</button></td></tr>`).join('')}
+      <tr><th>Holiday</th><th>Date</th><th>Type</th><th></th><th></th></tr>
+      ${holidays.map(h => `<tr><td><strong>${h.name}</strong></td><td>${new Date(h.date).toLocaleDateString()}</td><td><span class="badge ${h.type === 'National' ? 'badge-cyan' : h.type === 'Academic' ? 'badge-blue' : 'badge-gold'}">${h.type}</span></td><td><button class="btn btn-sm" onclick="downloadHolidayICS('${h.name.replace(/'/g, "\\'")}','${h.date}')">+ Add to Calendar</button></td><td><button class="btn btn-sm" onclick="downloadHolidayReceiptPDF('${h.name.replace(/'/g, "\\'")}','${h.date}','${h.type}')">🧾 Receipt</button></td></tr>`).join('')}
     </table></div>
   </div>`;
         }
@@ -5308,6 +5452,83 @@ Format as 5-6 numbered monthly milestones with specific, actionable tasks. Keep 
             const a = document.createElement('a');
             a.href = url; a.download = `${name.replace(/\s+/g, '-')}.ics`; a.click();
             URL.revokeObjectURL(url);
+        }
+
+        // ============================================================
+        // COLLEGE HOLIDAY ANNOUNCEMENT RECEIPT (client-side PDF)
+        // ============================================================
+        function downloadHolidayReceiptPDF(name, dateStr, type) {
+            const { jsPDF } = window.jspdf || {};
+            if (!jsPDF) { alert('PDF engine failed to load — check your connection and try again.'); return; }
+            const s = DATA.student || {};
+            const doc = new jsPDF();
+            const pageW = doc.internal.pageSize.getWidth();
+            const dateObj = new Date(dateStr);
+            const receiptNo = ('HOL-' + dateStr.replace(/-/g, '') + '-' + (s.id || 'STU')).toUpperCase();
+
+            // Outer border
+            doc.setDrawColor(6, 182, 212);
+            doc.setLineWidth(0.8);
+            doc.rect(10, 10, pageW - 20, 140);
+
+            // Header
+            doc.setFontSize(16);
+            doc.setTextColor(6, 182, 212);
+            doc.text('🎓 EduAI College', pageW / 2, 24, { align: 'center' });
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.text('OFFICIAL HOLIDAY ANNOUNCEMENT', pageW / 2, 32, { align: 'center' });
+            doc.setFontSize(8);
+            doc.setTextColor(100);
+            doc.text(`Receipt No: ${receiptNo}`, pageW / 2, 38, { align: 'center' });
+            doc.setDrawColor(200);
+            doc.line(16, 43, pageW - 16, 43);
+
+            // Body
+            let y = 55;
+            doc.setFontSize(10);
+            const rows = [
+                ['Holiday / Occasion', name],
+                ['Date Observed', dateObj.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })],
+                ['Category', type],
+                ['Issued To', `${s.name || '-'} (${s.id || '-'})`],
+                ['Department', s.dept || '-'],
+            ];
+            rows.forEach(([label, val]) => {
+                doc.setTextColor(100);
+                doc.text(`${label}:`, 18, y);
+                doc.setTextColor(0, 0, 0);
+                doc.text(String(val), 65, y);
+                y += 8;
+            });
+
+            y += 4;
+            doc.setDrawColor(200);
+            doc.line(16, y, pageW - 16, y);
+            y += 10;
+
+            doc.setFontSize(9);
+            doc.setTextColor(60);
+            const notice = `This is to notify that the college shall remain closed on the above date on account of ${name}. All students, faculty and staff are informed accordingly. Regular classes and college operations will resume from the next working day.`;
+            const wrapped = doc.splitTextToSize(notice, pageW - 36);
+            doc.text(wrapped, 18, y);
+            y += wrapped.length * 5 + 10;
+
+            // Signature
+            doc.setDrawColor(150);
+            doc.line(pageW - 75, y, pageW - 18, y);
+            doc.setFontSize(8);
+            doc.setTextColor(0, 0, 0);
+            doc.text('Office of the Registrar', pageW - 46.5, y + 5, { align: 'center' });
+
+            // Verification footer
+            const sigHash = btoa(`${receiptNo}-${s.id || 'STU'}`).slice(0, 24);
+            doc.setFontSize(7);
+            doc.setTextColor(140);
+            doc.text(`Verification Code: ${sigHash}`, 16, 145);
+            doc.text(`Generated on ${new Date().toLocaleString()} — EduAI College, for record purposes.`, 16, 149);
+
+            doc.save(`Holiday-Receipt-${name.replace(/\s+/g, '-')}-${dateStr}.pdf`);
         }
 
         function renderPortfolio(el) {
