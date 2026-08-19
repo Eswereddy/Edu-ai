@@ -87,6 +87,7 @@ const wellnessRoutes = require('./routes/wellnessRoutes'); // additive: goals wi
 const jobTrackerRoutes = require('./routes/jobTrackerRoutes'); // additive: personal job application tracker
 const createCareerPrepRouter = require('./routes/careerPrepRoutes'); // additive: AI cover letter generator
 const createStudyToolRouter = require('./routes/studyToolRoutes'); // additive: AI summarizer + Mermaid diagram
+const createStudentInterviewRouter = require('./routes/studentInterviewRoutes'); // additive: student self-service AI live interview bot + AI DSA practice (easy)
 const meetingRoutes = require('./routes/meetingRoutes'); // additive: meeting requests w/ suggest-slot/confirm/decline
 const timetableCsvRoutes = require('./routes/timetableCsvRoutes'); // additive: CSV export for timetable views
 
@@ -156,6 +157,8 @@ const aiMemoryAdminRoutes = require('./routes/aiMemoryAdminRoutes'); // additive
 // is its own module + own table(s) + own routes file; nothing existing
 // is modified.
 const createInterviewLabRouter = require('./routes/interviewLabRoutes'); // additive: AI Interview Orchestrator
+const createInterviewMasteryRouter = require('./routes/interviewMasteryRoutes'); // additive: AI Interview & Career Mastery Coach (DSA logic practice, presentation skills, interview round strategy)
+const createLiveInterviewRouter = require('./routes/liveInterviewRoutes'); // additive: AI Live Interview Bot (adaptive turn-by-turn, real-interview-style, distinct from the fixed-question-list interview-lab)
 const createInterviewSchedulerRouter = require('./routes/interviewSchedulerRoutes'); // additive: AI Interview Scheduler for placement drives (job_applications -> interview invites)
 const createPlacementAutopilotRouter = require('./routes/placementAutopilotRoutes'); // additive: AI Placement Cell Auto-Pilot (simulated apply)
 const createCodeReviewerRouter = require('./routes/codeReviewerRoutes'); // additive: AI Code Reviewer & Project Grader
@@ -410,6 +413,8 @@ app.use('/api/ai-admin/memory', aiMemoryAdminRoutes);
 
 // AI Admin Portal — Advanced AI Suite (this pass) — see requires above.
 app.use('/api/ai-admin/interview-lab', createInterviewLabRouter({ apiKey: ANTHROPIC_API_KEY, model: ANTHROPIC_MODEL }));
+app.use('/api/ai-admin/interview-mastery', createInterviewMasteryRouter({ apiKey: ANTHROPIC_API_KEY, model: ANTHROPIC_MODEL }));
+app.use('/api/ai-admin/live-interview', createLiveInterviewRouter({ apiKey: ANTHROPIC_API_KEY, model: ANTHROPIC_MODEL }));
 app.use('/api/ai-admin/placement-autopilot', createPlacementAutopilotRouter({ apiKey: ANTHROPIC_API_KEY, model: ANTHROPIC_MODEL }));
 app.use('/api/ai-admin/code-reviewer', createCodeReviewerRouter({ apiKey: ANTHROPIC_API_KEY, model: ANTHROPIC_MODEL }));
 app.use('/api/ai-admin/career-simulator', createCareerSimulatorRouter({ apiKey: ANTHROPIC_API_KEY, model: ANTHROPIC_MODEL }));
@@ -441,6 +446,7 @@ app.use('/api/student/wellness', wellnessRoutes);
 app.use('/api/student/job-tracker', jobTrackerRoutes);
 app.use('/api/career-prep', createCareerPrepRouter({ apiKey: ANTHROPIC_API_KEY, model: ANTHROPIC_MODEL }));
 app.use('/api/study-tool', createStudyToolRouter({ apiKey: ANTHROPIC_API_KEY, model: ANTHROPIC_MODEL }));
+app.use('/api/student/interview-coach', createStudentInterviewRouter({ apiKey: ANTHROPIC_API_KEY, model: ANTHROPIC_MODEL }));
 app.use('/api/meetings', meetingRoutes);
 app.use('/api/timetable-export', timetableCsvRoutes);
 
