@@ -19,6 +19,7 @@ there's nothing to deploy separately and no CORS configuration to fight.
 - [Tech stack](#tech-stack)
 - [Portals & features](#portals--features)
 - [AI layer](#ai-layer)
+- [Algorithms used](#algorithms-used)
 - [Getting started](#getting-started)
 - [Environment variables](#environment-variables)
 - [API overview](#api-overview)
@@ -59,6 +60,10 @@ planning, career prep) rather than canned responses.
   GPS tracking.
 - **Background scheduler** (`src/scheduler.js`) for things like overdue
   library reminders.
+- **Landing page.** The site opens on a single **"Login Here"** button; the
+  five portal cards (Student/Faculty/Parent/Admin/AI-Admin) are unchanged
+  under the hood and appear when that button is clicked, so login is a
+  one-tap-then-pick-your-portal flow instead of five cards up front.
 
 ## Tech stack
 
@@ -146,6 +151,32 @@ POST /api/ai/instant
   per portal.
 - **Multilingual:** `src/i18n.js` + Google Translate support UI and AI
   responses in multiple languages, with text-to-speech via Google Cloud TTS.
+
+## Algorithms used
+
+Most "AI" features (interview coaching, curriculum mapping, sentiment
+narratives, placement matching, etc.) work by prompting Gemini/Claude
+through `src/aiJsonHelper.js` rather than a hand-rolled algorithm — the
+model does the reasoning. The parts of the platform that *are* genuine,
+hand-implemented algorithms are:
+
+| Algorithm | Where | What it does |
+|---|---|---|
+| **TF‑IDF (term frequency–inverse document frequency)** | `src/rag.js` | Weighs each word in the knowledge-base corpus by how distinctive it is, so common words (e.g. "the", "class") count for less than topic-specific ones. |
+| **Cosine similarity** | `src/rag.js`, `src/vectorStore.js` | Compares the TF‑IDF vector (or embedding vector) of a user's question against every document's vector to rank which facts are most relevant — this is the retrieval step of the platform's RAG pipeline. |
+| **Feature hashing / hashing-trick bag-of-words embedding** | `src/vectorStore.js` | The zero-config fallback embedding (used when no Voyage/OpenAI key is set) — the same trick behind scikit-learn's `HashingVectorizer`: each word is hashed into one of 256 fixed dimensions, giving a deterministic vector with no training or API call needed. |
+| **bcrypt password hashing** | `src/auth.js` | A slow, salted one-way hashing algorithm used to store passwords so plaintext is never persisted. |
+| **JWT / HMAC signing** | `src/auth.js` | Signs session tokens so the server can verify they weren't tampered with, without a server-side session store. |
+| **Rule-based (threshold) risk scoring** | `src/gradeEngine.js` | A deliberately simple, explainable classifier — not a trained model — that flags a student as low/medium/high risk based on fixed SGPA and attendance thresholds, so a faculty member can see exactly why a flag was raised. |
+| **Percentile ranking** | `src/gradeEngine.js` | Sorts a class's SGPA scores and derives each student's rank and percentile within the batch. |
+| **Slab-based tax calculation** | `src/payrollTax.js` | Bracket-lookup TDS computation over illustrative income slabs (not live CBDT rates — see the file's own disclaimer). |
+| **SHA-256 hash anchoring** | `src/certificateBlockchainAnchor.js` (via `ethers`) | Hashes a certificate's contents and writes only the hash on-chain (Sepolia testnet) so authenticity can be verified without storing the document itself on-chain. |
+
+If you're looking for "the" algorithm behind the AI-Admin portal's smarter
+features (curriculum relevance scores, exam difficulty index, achievement
+recommendations, sentiment heatmap, placement matching) — those are LLM
+prompt/response pipelines (Gemini-first, Claude-fallback) with structured
+JSON output, not classical algorithms; the table above is the non-LLM logic.
 
 ## Getting started
 
